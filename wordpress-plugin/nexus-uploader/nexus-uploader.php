@@ -31,6 +31,9 @@ class Nexus_Uploader {
         add_filter( 'query_vars', array( $this, 'nexus_query_vars' ), 0 );
         add_filter( 'woocommerce_account_menu_items', array( $this, 'add_nexus_link_my_account' ) );
         add_action( 'woocommerce_account_nexus-designs_endpoint', array( $this, 'nexus_designs_content' ) );
+
+        // Автоматическое создание точки входа (Страницы и Кнопки в меню)
+        add_action( 'init', array( $this, 'setup_nexus_account_entry_point' ) );
     }
 
     public function enqueue_nexus_assets() {
@@ -105,6 +108,65 @@ class Nexus_Uploader {
             flush_rewrite_rules( false );
             update_option( 'nexus_rules_flushed_v1', true );
         }
+    }
+
+    public function setup_nexus_account_entry_point() {
+        if ( get_option( 'nexus_entry_point_created_v1' ) || ! function_exists('wc_get_page_id') ) {
+            return;
+        }
+
+        $page_title = 'Личный кабинет NEXUS';
+        $page_content = '[woocommerce_my_account]';
+        $page_id = wc_get_page_id( 'myaccount' );
+
+        // 1. Создаем страницу, если её физически не существует
+        if ( $page_id <= 0 ) {
+            $page_check = get_page_by_title( $page_title );
+            if ( isset( $page_check->ID ) ) {
+                $page_id = $page_check->ID;
+            } else {
+                $page_id = wp_insert_post( array(
+                    'post_title'   => $page_title,
+                    'post_content' => $page_content,
+                    'post_status'  => 'publish',
+                    'post_type'    => 'page',
+                ) );
+            }
+            if ( $page_id ) {
+                update_option( 'woocommerce_myaccount_page_id', $page_id );
+            }
+        }
+
+        // 2. Автоматически выводим кнопку в главное меню сайта
+        $menus = wp_get_nav_menus();
+        if ( ! empty( $menus ) && $page_id ) {
+            $menu_id = $menus[0]->term_id; // Берем первое активное меню
+            
+            $menu_items = wp_get_nav_menu_items( $menu_id );
+            $exists = false;
+            
+            if ( $menu_items ) {
+                foreach ( $menu_items as $item ) {
+                    if ( $item->object_id == $page_id ) {
+                        $exists = true;
+                        break;
+                    }
+                }
+            }
+
+            // Если кнопки еще нет в меню - добавляем её
+            if ( ! $exists ) {
+                wp_update_nav_menu_item( $menu_id, 0, array(
+                    'menu-item-title'     => 'Мой Кабинет',
+                    'menu-item-object-id' => $page_id,
+                    'menu-item-object'    => 'page',
+                    'menu-item-status'    => 'publish',
+                    'menu-item-type'      => 'post_type',
+                ) );
+            }
+        }
+
+        update_option( 'nexus_entry_point_created_v1', true ); // Ставим флаг, чтобы больше не запускать
     }
 
     public function nexus_query_vars( $vars ) {
