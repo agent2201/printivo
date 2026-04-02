@@ -99,6 +99,12 @@ class Nexus_Uploader {
 
     public function add_nexus_endpoint() {
         add_rewrite_endpoint( 'nexus-designs', EP_ROOT | EP_PAGES );
+        
+        // Автоматический сброс кэша ссылок (один раз)
+        if ( ! get_option( 'nexus_rules_flushed_v1' ) ) {
+            flush_rewrite_rules( false );
+            update_option( 'nexus_rules_flushed_v1', true );
+        }
     }
 
     public function nexus_query_vars( $vars ) {
