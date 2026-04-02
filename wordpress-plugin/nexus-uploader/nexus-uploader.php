@@ -25,6 +25,12 @@ class Nexus_Uploader {
 
         // Скрытие Kixxl через CSS (если он активен)
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_nexus_assets' ) );
+
+        // --- Личный кабинет NEXUS ---
+        add_action( 'init', array( $this, 'add_nexus_endpoint' ) );
+        add_filter( 'query_vars', array( $this, 'nexus_query_vars' ), 0 );
+        add_filter( 'woocommerce_account_menu_items', array( $this, 'add_nexus_link_my_account' ) );
+        add_action( 'woocommerce_account_nexus-designs_endpoint', array( $this, 'nexus_designs_content' ) );
     }
 
     public function enqueue_nexus_assets() {
@@ -87,6 +93,80 @@ class Nexus_Uploader {
         if ( isset( $values['nexus_file_path'] ) ) {
             $item->add_meta_data( 'nexus_file_path', $values['nexus_file_path'] );
         }
+    }
+
+    // --- Методы личного кабинета NEXUS ---
+
+    public function add_nexus_endpoint() {
+        add_rewrite_endpoint( 'nexus-designs', EP_ROOT | EP_PAGES );
+    }
+
+    public function nexus_query_vars( $vars ) {
+        $vars[] = 'nexus-designs';
+        return $vars;
+    }
+
+    public function add_nexus_link_my_account( $items ) {
+        // Вставляем вкладку "Мои Макеты" перед "Выход" (logout)
+        $new_items = array();
+        foreach ( $items as $key => $value ) {
+            if ( $key === 'customer-logout' ) {
+                $new_items['nexus-designs'] = 'Мои Макеты';
+            }
+            $new_items[$key] = $value;
+        }
+        return $new_items;
+    }
+
+    public function nexus_designs_content() {
+        echo '<h3>🎨 Мои макеты NEXUS</h3>';
+        echo '<p>Здесь безопасно хранятся исходники всех ваших заказов. Файлы лежат на локальном высокоскоростном сервере типографии.</p>';
+        
+        $customer_orders = get_posts( array(
+            'numberposts' => -1,
+            'meta_key'    => '_customer_user',
+            'meta_value'  => get_current_user_id(),
+            'post_type'   => wc_get_order_types(),
+            'post_status' => array_keys( wc_get_order_statuses() ),
+        ) );
+
+        if ( ! $customer_orders ) {
+            echo '<div class="woocommerce-message">У вас еще нет заказов с загруженными макетами.</div>';
+            return;
+        }
+
+        echo '<table class="woocommerce-orders-table woocommerce-MyAccount-orders shop_table shop_table_responsive my_account_orders account-orders-table">';
+        echo '<thead><tr><th class="order-number">Заказ</th><th class="order-date">Дата</th><th class="order-total">Файл</th><th class="order-actions">Действие</th></tr></thead><tbody>';
+
+        $has_files = false;
+
+        foreach ( $customer_orders as $customer_order ) {
+            $order = wc_get_order( $customer_order->ID );
+            $items = $order->get_items();
+            
+            foreach ( $items as $item_id => $item ) {
+                $nexus_path = $item->get_meta( 'nexus_file_path' );
+                if ( ! empty( $nexus_path ) ) {
+                    $has_files = true;
+                    $order_url = $order->get_view_order_url();
+                    // Формируем ссылку на ваш локальный сервер MinIO
+                    $download_url = 'https://uncontending-mitch-ungarrisoned.ngrok-free.dev/' . esc_attr($nexus_path);
+                    
+                    echo '<tr class="woocommerce-orders-table__row">';
+                    echo '<td class="woocommerce-orders-table__cell" data-title="Заказ"><a href="' . esc_url($order_url) . '">#' . $order->get_order_number() . '</a></td>';
+                    echo '<td class="woocommerce-orders-table__cell" data-title="Дата">' . wc_format_datetime( $order->get_date_created() ) . '</td>';
+                    echo '<td class="woocommerce-orders-table__cell" data-title="Файл"><strong>' . basename($nexus_path) . '</strong></td>';
+                    echo '<td class="woocommerce-orders-table__cell" data-title="Действие"><a href="' . esc_url($download_url) . '" target="_blank" class="woocommerce-button button view" style="background:#FF0080; color:white;">Скачать оригинал</a></td>';
+                    echo '</tr>';
+                }
+            }
+        }
+
+        if ( ! $has_files ) {
+            echo '<tr><td colspan="4">В ваших текущих заказах макетов не найдено.</td></tr>';
+        }
+
+        echo '</tbody></table>';
     }
 }
 
