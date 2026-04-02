@@ -1,0 +1,93 @@
+<?php
+/**
+ * Plugin Name: NEXUS Printivo Uploader
+ * Description: Загрузчик файлов напрямую на локальный сервер NEXUS (вместо Kixxl).
+ * Version: 1.0.0
+ * Author: NEXUS
+ */
+
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+class Nexus_Uploader {
+
+    public function __construct() {
+        // Добавление интерфейса загрузки на страницу товара
+        add_action( 'woocommerce_before_add_to_cart_button', array( $this, 'render_uploader_ui' ) );
+        
+        // Сохранение ссылки на файл в метаданных корзины
+        add_filter( 'woocommerce_add_cart_item_data', array( $this, 'add_nexus_file_to_cart' ), 10, 3 );
+        
+        // Отображение ссылки в корзине и при оформлении заказа
+        add_filter( 'woocommerce_get_item_data', array( $this, 'display_nexus_file_in_cart' ), 10, 2 );
+        
+        // Сохранение ссылки в метаданные заказа
+        add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'save_nexus_file_to_order' ), 10, 4 );
+
+        // Скрытие Kixxl через CSS (если он активен)
+        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_nexus_assets' ) );
+    }
+
+    public function enqueue_nexus_assets() {
+        wp_enqueue_style( 'nexus-uploader-css', plugin_dir_url( __FILE__ ) . 'assets/nexus-style.css', array(), time() );
+        wp_enqueue_script( 'nexus-uploader-js', plugin_dir_url( __FILE__ ) . 'assets/nexus-uploader.js', array('jquery'), time(), true );
+        
+        // Передача настроек туннеля в JS
+        wp_localize_script( 'nexus-uploader-js', 'nexus_config', array(
+            'endpoint' => 'https://uncontending-mitch-ungarrisoned.ngrok-free.dev',
+            'bucket'   => 'nexus-uploads'
+        ));
+    }
+
+    public function render_uploader_ui() {
+        ?>
+        <div id="nexus-uploader-container" class="nexus-uploader">
+            <label for="nexus-upload-input">Загрузить файлы (PNG, SVG):</label>
+            <div class="nexus-dropzone" id="nexus-dropzone">
+                <span id="nexus-status-text">Перетащите файлы сюда или нажмите для выбора</span>
+                <input type="file" id="nexus-upload-input" multiple style="display:none;" accept="image/png,image/svg+xml">
+                <div id="nexus-progress-bar" style="display:none;">
+                    <div id="nexus-progress-inner"></div>
+                </div>
+            </div>
+            <input type="hidden" name="nexus_file_path" id="nexus-file-path-hidden">
+            <input type="hidden" name="nexus_file_preview" id="nexus-file-preview-hidden">
+        </div>
+        <style>
+            .nexus-uploader { margin-bottom: 20px; border: 2px dashed #0073aa; padding: 20px; text-align: center; border-radius: 8px; }
+            #nexus-progress-bar { width: 100%; background: #eee; height: 10px; margin-top: 10px; border-radius: 5px; overflow: hidden; }
+            #nexus-progress-inner { height: 100%; background: #0073aa; width: 0%; transition: width 0.3s; }
+            /* Возвращаем стандартную кнопку покупки, которую мог скрыть Kixxl */
+            .single_add_to_cart_button { display: inline-block !important; visibility: visible !important; }
+            #kixxl-custom-button { display: none !important; }
+        </style>
+        <?php
+    }
+
+    public function add_nexus_file_to_cart( $cart_item_data, $product_id, $variation_id ) {
+        if ( isset( $_POST['nexus_file_path'] ) && ! empty( $_POST['nexus_file_path'] ) ) {
+            $cart_item_data['nexus_file_path'] = sanitize_text_field( $_POST['nexus_file_path'] );
+            if ( isset( $_POST['nexus_file_preview'] ) ) {
+                $cart_item_data['nexus_file_preview'] = sanitize_text_field( $_POST['nexus_file_preview'] );
+            }
+        }
+        return $cart_item_data;
+    }
+
+    public function display_nexus_file_in_cart( $item_data, $cart_item ) {
+        if ( isset( $cart_item['nexus_file_path'] ) ) {
+            $item_data[] = array(
+                'name' => 'NEXUS File',
+                'value' => '✔ Загружено (ID: ' . basename($cart_item['nexus_file_path']) . ')'
+            );
+        }
+        return $item_data;
+    }
+
+    public function save_nexus_file_to_order( $item, $cart_item_key, $values, $order ) {
+        if ( isset( $values['nexus_file_path'] ) ) {
+            $item->add_meta_data( 'nexus_file_path', $values['nexus_file_path'] );
+        }
+    }
+}
+
+new Nexus_Uploader();

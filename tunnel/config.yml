@@ -1,0 +1,7 @@
+tunnel: nexus-gate
+credentials-file: C:\Users\admin\Downloads\NEXUS\nexus-main\printivo\tunnel\credentials.json
+
+ingress:
+  - hostname: nexus-builder.printivo.dev  # Пример (заменится на реальный при привязке)
+    service: http://localhost:3000
+  - service: http_status:404

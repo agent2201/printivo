@@ -1,0 +1,31 @@
+# NEXUS Project Config
+.agents/
+.vscode/
+
+# Secrets and Tokens
+token.pickle
+credentials.json
+.local/
+.cache/
+*.log
+*.tmp
+*.bak
+
+# Media and Large Files
+INBOX/
+DOCKER/data/
+MinIO/data/
+
+# Python Environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env
+
+# MacOS / Window Files
+.DS_Store
+thumbs.db
+desktop.ini

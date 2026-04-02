@@ -1,0 +1,51 @@
+/* NEXUS Uploader Style */
+.nexus-uploader {
+    background: rgba(255, 255, 255, 0.05); /* Стекло */
+    backdrop-filter: blur(10px);
+    border: 2px dashed #0073aa;
+    padding: 30-40px;
+    border-radius: 12px;
+    margin: 20px 0;
+    transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    color: #444;
+}
+
+.nexus-uploader:hover {
+    border-color: #00aaff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.nexus-dropzone {
+    cursor: pointer;
+    padding: 40px 20px;
+}
+
+.nexus-dropzone i {
+    font-size: 40px;
+    color: #0073aa;
+    margin-bottom: 10px;
+}
+
+#nexus-progress-bar {
+    width: 100%;
+    background: #e0e0e0;
+    height: 8px;
+    border-radius: 4px;
+    margin-top: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#nexus-progress-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #0073aa, #00d2ff);
+    width: 0%;
+    transition: width 0.3s ease-out;
+}
+
+.nexus-preview-thumbnail {
+    margin-top: 15px;
+    max-width: 100px;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
